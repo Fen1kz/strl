@@ -1,0 +1,8 @@
+module.exports = {
+  CONNECT_BOTH
+  , CONNECT_LEFT
+  , CONNECT_RIGHT
+  , REMOVE_CENTER
+  , ONE_LEFT
+  , ONE_RIGHT
+}
