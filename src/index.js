@@ -2,48 +2,37 @@ const Grammar = require('./Grammar');
 const {randomArray} = require('./Random');
 const {MissionGraph} = require('./MissionGraph');
 
-const test1 = MissionGraph.fromPack({
-    nodes: 'A B C D E F G H I'
-    , links: `
-0 0 0 0 1 1 0 0 0
-0 0 0 0 0 1 0 0 0
-0 0 0 0 0 0 0 0 0
-0 0 0 0 0 0 0 0 0
-0 0 0 0 0 0 0 0 1
-0 0 0 0 0 0 0 0 1
-0 0 1 1 0 0 0 0 0
-0 0 0 1 0 0 0 0 0
-0 0 0 0 0 0 1 1 0
-`
-  });
-  
-const test2 = MissionGraph.fromPack({
-    nodes: 'W X Y Z'
-    , links: `
-0 1 1 0
-0 0 0 0
-0 1 0 1
-0 0 0 0
-`
-  });
-  
+
 const generateMission = (missionString) => {
   const grammarKeys = Object.keys(Grammar)
-  const graph = new MissionGraph();
-  const St = graph.addNode(new MissionGraph.Node('St'))
-  const Ex = graph.addNode(new MissionGraph.Node('Ex'))
+  // const graph = new MissionGraph();
   
-  const rules = {
-    'E F I': {
-      links: `
-0 0 1
-0 0 1
-0 0 0
-`
-    }
-  }
-  
-  console.log(test1.toTable())
+const graph = MissionGraph.fromTable(`
+    S s s E
+  S 0 1 1 0
+  s 0 0 0 1
+  s 0 0 0 1
+  E 0 0 0 0
+`)
+
+console.log(graph.toTable())
+      
+//   const St = graph.addNode(new MissionGraph.Node('St'))
+//   const Ex = graph.addNode(new MissionGraph.Node('Ex'))
+// 
+//   const rules = {
+//     'E F I': {
+//       links: `
+// 0 0 1
+// 0 0 1
+// 0 0 0
+// `
+//     }
+//   }
+
+  // console.log(test1.sub(
+  //   test1.find('E')
+  //   , test1.find('E F I').toTable())
   
   // console.log(graph.getLinksFrom(0), graph.getLinksFrom(1))
   // console.log(graph.getLinksTo(0), graph.getLinksTo(1))

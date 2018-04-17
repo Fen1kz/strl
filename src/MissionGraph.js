@@ -1,42 +1,7 @@
-const mimickArray = (prop) => ({
-  value (callback) {
-    return Object.keys(this)[prop]((key, idx) => callback(this[key], key, idx))
-  }
-});
-
-const getMap = () => {
-  const map = {};
-  Object.defineProperties(map, {
-    map: mimickArray('map')
-    , some: mimickArray('some')
-    , forEach: mimickArray('forEach')
-  });
-  return map;
-} 
-
-
 class MissionGraph {
   constructor() {
-    this.nodes = getMap();
-    this.links = getMap();
+    this.nodes = {};
     this.length = 0;
-  }
-  
-  static fromPack(pack) {
-    const graph = new MissionGraph();
-    const nodes = pack.nodes.split(' ').map(n => graph.addNode(new Node(n)).id)
-    pack.links
-      .split('\n')
-      .filter(line => line.trim())
-      .forEach((line, lineIdx) => {
-        graph.links[nodes[lineIdx]] = getMap()
-        line.split(' ').forEach((link, linkIdx) => {
-          if (link) {
-            graph.links[nodes[lineIdx]][nodes[linkIdx]] = +link;
-          }
-        })
-      })
-    return graph;
   }
   
   addNode(node) {
@@ -52,11 +17,8 @@ class MissionGraph {
     this.length--;
   }
   
-  addLink(id1, id2) {
-    if (!this.links[id1]) this.links[id1] = getMap();
-    this.links[id1][id2] = 1
-    // if (!this.links[id2]) this.links[id2] = getMap();
-    // this.links[id2][id1] = 1
+  addLink(node1, node2, type = 1) {
+    node1.nodes[node2.id] = type;
   }
   
   delLink(id1, id2) {
@@ -103,24 +65,74 @@ class MissionGraph {
     return this;
   }
   
+  findGraph(searchStr) {
+    const searchArr = searchStr.split(' ').map(nodeType => {
+      return Object.values(this.nodes).filter(node => node.value === nodeType);
+    });
+    searchArr.forEach((nv1, nvIdx1) => {
+      nv1.forEach((node1) => {
+        searchArr.forEach((nv2, nvIdx2) => {
+          if (nvIdx1 === nvIdx2) return;
+          nv2.forEach((node2) => {
+            console.log(node1.value, node2.value)
+          })
+        })
+      })
+    })
+    return searchArr;
+  }
+  
+  static fromTable(table) {
+    const graph = new MissionGraph();
+    const lines = table
+      .split('\n')
+      .filter(line => !!line.trim())
+    const header = lines.shift();
+    const nodes = header.match(/\S+/g)
+      .map((node) => graph.addNode(new Node(node)))
+      
+    lines.forEach((lineRaw, lineIdx) => {
+      const line = lineRaw.match(/\S+/g);
+      line.shift();
+      line.forEach((value, valueIdx) => {
+        if (value !== '0' && value !== '-') {
+          graph.addLink(nodes[lineIdx], nodes[valueIdx])
+        }
+      })
+    })
+    
+    return graph;
+  }
   
   toTable() {
-    return `   ${this.nodes.map(n => n.value.length === 2 ? n.value : n.value + ' ')
-      .join(' ')}\n${
-    this.nodes.map((node, index) => {
-      return `${node.value}  ${this.nodes.map(node2 => {
-        return this.links[node.id] && this.links[node.id][node2.id] 
-          ? this.links[node.id][node2.id] 
-          : '0'
-      }).join('  ')}`
+    return `   ${
+      Object.values(this.nodes)
+        .map(n => n.value.length === 2 ? n.value : n.value + ' ')
+        .join(' ')
+    }\n${
+      Object.values(this.nodes).map((node, index) => {
+        return `${node.value}  ${Object.values(this.nodes)
+          .map(node2 => node.nodes[node2.id]
+              ? node.nodes[node2.id]
+              : '0')
+        .join('  ')}`
     }).join('\n')}`
   }
+  // 
+  // toString() {
+  //   return (this.nodes)
+  // }
 }
 
 class Node {
   constructor(value) {
     this.id = Node.NODE_ID++;
     this.value = value;
+    this.nodes = {};
+  }
+  
+  toString() {
+    return (this.value)
   }
 }
 Node.NODE_ID = 0;
