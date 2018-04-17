@@ -1,11 +1,25 @@
 const Grammar = require('./Grammar');
 const {randomArray} = require('./Random');
-const {MissionGraph} = require('./MissionGraph');
+const {MissionGraph, LinkType} = require('./MissionGraph');
 
 
 const generateMission = (missionString) => {
   const grammarKeys = Object.keys(Grammar)
   // const graph = new MissionGraph();
+
+  const hardGraph1 = (() => {
+    const graph = new MissionGraph();
+    const [start, secret, value, exit] = graph.addNodes('<', '%', '$', '>');
+    const [key1, key2, lock1, lock2] = graph.addNodes('K', 'K', 'L', 'L');
+    const [s0, s1, s2] = graph.addNodes('(ML)', '()', '()');
+    
+    graph.addLink(start, s1, LinkType.TO_START)
+    graph.addLink(s1, key1, LinkType.TO_END)
+    graph.addLink(s1, lock1, LinkType.TO_RANDOM)
+    graph.addLink(s1, s2, LinkType.TO_FUUUUUUUUU)
+
+    return graph;
+  })()
   
 const graph = MissionGraph.fromTable(`
     S s s E
@@ -15,7 +29,7 @@ const graph = MissionGraph.fromTable(`
   E 0 0 0 0
 `)
 
-console.log(graph.toTable())
+console.log(hardGraph1.toTable())
       
 //   const St = graph.addNode(new MissionGraph.Node('St'))
 //   const Ex = graph.addNode(new MissionGraph.Node('Ex'))

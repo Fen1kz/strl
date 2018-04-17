@@ -1,14 +1,5 @@
 const {MissionGraph} = require('./MissionGraph');
 
-const edgeFlags = {
-  N: 0
-  , E: 1
-  , S: 2
-  , W: 3
-  , Link: 4
-}
-
-
 // Start: 'St'
 // Exit: 'Ex'
 // Space: 'S#'
@@ -24,6 +15,8 @@ const edgeFlags = {
 // Door: '+'
 // DoorLever: '+l'
 // DoorKey: '+k'
+
+
 
 module.exports = {
   '> <': [MissionGraph.fromTable(`

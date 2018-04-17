@@ -10,6 +10,10 @@ class MissionGraph {
     return node;
   }
   
+  addNodes(...nodes) {
+    return nodes.map(value => this.addNode(new Node(value)));
+  }
+  
   delNode(nodeId) {
     this.getLinksTo(nodeId).forEach(node2 => delete this.links[node2.id][nodeId])
     delete this.nodes[nodeId];
@@ -17,8 +21,9 @@ class MissionGraph {
     this.length--;
   }
   
-  addLink(node1, node2, type = 1) {
+  addLink(node1, node2, type = LinkType.NORMAL, twoWay = true) {
     node1.nodes[node2.id] = type;
+    if (twoWay) node2.nodes[node1.id] = type;
   }
   
   delLink(id1, id2) {
@@ -105,17 +110,21 @@ class MissionGraph {
   }
   
   toTable() {
-    return `   ${
-      Object.values(this.nodes)
-        .map(n => n.value.length === 2 ? n.value : n.value + ' ')
-        .join(' ')
+    const prefix = ' '.repeat(Object.values(this.nodes)
+      .reduce((max, node) => node.value.length > max.value.length ? node : max)
+      .value.length)
+    return `${prefix} ${
+      Object.values(this.nodes).join(' ')
     }\n${
       Object.values(this.nodes).map((node, index) => {
-        return `${node.value}  ${Object.values(this.nodes)
-          .map(node2 => node.nodes[node2.id]
-              ? node.nodes[node2.id]
-              : '0')
-        .join('  ')}`
+        return `${node}${' '.repeat(prefix.length - node.value.length)}${
+          Object.values(this.nodes)
+            .map(node2 => 
+              ' '.repeat(node2.value.length) 
+              + (node.nodes[node2.id]
+                ? node.nodes[node2.id]
+                : '0'))
+        .join('')}`
     }).join('\n')}`
   }
   // 
@@ -132,11 +141,23 @@ class Node {
   }
   
   toString() {
-    return (this.value)
+    return this.value;
   }
 }
 Node.NODE_ID = 0;
 
 MissionGraph.Node = Node;
 
-module.exports = {MissionGraph}
+const LinkType = (() => {
+  let i = 0;
+  return {
+      NO_LINK: i++
+    , NORMAL: i++
+    , ONE_WAY: i++
+    , TO_START: i++
+    , TO_EXIT: i++
+    , TO_RANDOM: i++
+  }
+})();
+
+module.exports = {MissionGraph, LinkType}
