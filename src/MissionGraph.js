@@ -1,3 +1,15 @@
+const LinkType = (() => {
+  let i = 0;
+  return {
+      NO_LINK: i++
+    , PATH: i++
+    , START: i++
+    , END: i++
+    , MIDDLE: i++
+    , LOGIC: i++
+  }
+})();
+
 class MissionGraph {
   constructor() {
     this.nodes = {};
@@ -14,40 +26,47 @@ class MissionGraph {
     return nodes.map(value => this.addNode(new Node(value)));
   }
   
-  delNode(nodeId) {
-    this.getLinksTo(nodeId).forEach(node2 => delete this.links[node2.id][nodeId])
-    delete this.nodes[nodeId];
-    delete this.links[nodeId];
-    this.length--;
+  addTriple (value) {
+    const nodes = this.addNodes('(','|',')')
+    this.addLink(nodes[1], nodes[0], LinkType.START, false)
+    this.addLink(nodes[0], nodes[1], LinkType.MIDDLE, false)
+    this.addLink(nodes[2], nodes[1], LinkType.MIDDLE, false)
+    this.addLink(nodes[1], nodes[2], LinkType.END, false)
+    return nodes;
   }
   
-  addLink(node1, node2, type = LinkType.NORMAL, twoWay = true) {
+  delNode(node) {
+    this.getLinksTo(node)
+      .forEach(([nodeId, type]) => this.delLink(node, this.nodes[nodeId]));
+    delete this.nodes[node.id];
+  }
+  
+  addLink(node1, node2, type = LinkType.PATH, twoWay = true) {
     node1.nodes[node2.id] = type;
     if (twoWay) node2.nodes[node1.id] = type;
   }
   
-  delLink(id1, id2) {
-    if (this.links[id1]) this.links[id1][id2] = 0;
-    // if (this.links[id2]) this.links[id2][id1] = 0
+  delLink(node1, node2) {
+    console.log('node2', node2)
+    if (this.hasLink(node1, node2)) delete node1[node2.id]
+    if (this.hasLink(node2, node1)) delete node2[node1.id]
   }
   
-  hasLink(id1, id2) {
-    return this.links[id1] && this.links[id1][id2];
+  hasLink(node1, node2) {
+    return !!node1.nodes[node2.id];
   }
   
-  getLinksFrom(id1) {
-    if (!this.links[id1]) return [];
-    return this.links[id1].map((v, k) => !!v && this.nodes[k]).filter(n => !!n);
+  getLinksOf(node) {
+    return Object.entries(node.nodes);
   }
   
-  getLinksTo(id1) {
-    const result = [];
-    this.links.map((linksOf, node2id) => {
-      return linksOf.map((v, id) => {
-        if (!!v && id == id1) {
-          result.push(this.nodes[node2id]);
-        }
-      }).filter(n => !!n)
+  getLinksTo(targetNode) {
+    let result = [];
+    Object.values(this.nodes).map((node) => {
+      result = result.concat(this.getLinksOf(node)
+        .filter(([nodeId, type]) => +nodeId === targetNode.id)
+        .map(([nodeId, type]) => [node.id, type])
+      )
     })
     return result;
   }
@@ -119,11 +138,9 @@ class MissionGraph {
       Object.values(this.nodes).map((node, index) => {
         return `${node}${' '.repeat(prefix.length - node.value.length)}${
           Object.values(this.nodes)
-            .map(node2 => 
-              ' '.repeat(node2.value.length) 
-              + (node.nodes[node2.id]
-                ? node.nodes[node2.id]
-                : '0'))
+            .map(node2 => ' ' 
+              + (node.nodes[node2.id] || '0')
+              + ' '.repeat(node2.value.length - 1) )
         .join('')}`
     }).join('\n')}`
   }
@@ -147,17 +164,5 @@ class Node {
 Node.NODE_ID = 0;
 
 MissionGraph.Node = Node;
-
-const LinkType = (() => {
-  let i = 0;
-  return {
-      NO_LINK: i++
-    , NORMAL: i++
-    , ONE_WAY: i++
-    , TO_START: i++
-    , TO_EXIT: i++
-    , TO_RANDOM: i++
-  }
-})();
 
 module.exports = {MissionGraph, LinkType}

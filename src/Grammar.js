@@ -19,7 +19,26 @@ const {MissionGraph} = require('./MissionGraph');
 
 
 module.exports = {
-  '> <': [MissionGraph.fromTable(`
+  'nds': [
+    // (() => {
+    //   const graph = new MissionGraph();
+    //   const [start, exit, monster, value] = graph.addNodes('<', '>', 'M', '$');
+    //   const [s,m,e] = graph.addTriple();
+    //   graph.addLink(start, s);
+    //   graph.addLink(monster, m);
+    //   graph.addLink(monster, value);
+    //   graph.addLink(exit, e);
+    //   return graph;
+    // })
+    (() => {
+      const graph = new MissionGraph();
+      const [start, monster, exit] = graph.addNodes('<', 'M', '>');
+      graph.addLink(start, monster);
+      graph.addLink(exit, monster);
+      return graph;
+    })
+  ]
+  , '> <': [MissionGraph.fromTable(`
   < K K s s L L $ > X
 < - 0 0 1 0 0 0 0 0 0
 K 0 - 0 1 0 2 0 0 0 1

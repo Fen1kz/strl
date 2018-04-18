@@ -3,7 +3,7 @@ const {randomArray} = require('./Random');
 const {MissionGraph, LinkType} = require('./MissionGraph');
 
 
-const generateMission = (missionString) => {
+const generateMission = (missionString, complexity = 3) => {
   const grammarKeys = Object.keys(Grammar)
   // const graph = new MissionGraph();
 
@@ -11,25 +11,102 @@ const generateMission = (missionString) => {
     const graph = new MissionGraph();
     const [start, secret, value, exit] = graph.addNodes('<', '%', '$', '>');
     const [key1, key2, lock1, lock2] = graph.addNodes('K', 'K', 'L', 'L');
-    const [s0, s1, s2] = graph.addNodes('(ML)', '()', '()');
+    const [s0, m0, e0] = graph.addTriple('sML');
+    const [s1, m1, e1] = graph.addTriple('sML');
+    const [s2, m2, e2] = graph.addTriple('sML');
     
-    graph.addLink(start, s1, LinkType.TO_START)
-    graph.addLink(s1, key1, LinkType.TO_END)
-    graph.addLink(s1, lock1, LinkType.TO_RANDOM)
-    graph.addLink(s1, s2, LinkType.TO_FUUUUUUUUU)
+    graph.addLink(start, s1) 
+    
+    graph.addLink(secret, e0, LinkType.PATH, false)   
+    graph.addLink(secret, key2)   
+    
+    graph.addLink(value, exit)   
+    graph.addLink(value, lock2)
+       
+    graph.addLink(exit, key2)   
+    graph.addLink(exit, lock1) 
+    
+    graph.addLink(key1, s0)  
+    graph.addLink(key1, e1)  
+    graph.addLink(key1, lock1, LinkType.LOGIC) 
+      
+    graph.addLink(key2, lock2, LinkType.LOGIC)  
+    
+    graph.addLink(lock1, m1)
+    graph.addLink(lock2, m2)
+    
+    graph.addLink(m1, s2)
 
     return graph;
   })()
   
-const graph = MissionGraph.fromTable(`
-    S s s E
-  S 0 1 1 0
-  s 0 0 0 1
-  s 0 0 0 1
-  E 0 0 0 0
-`)
-
-console.log(hardGraph1.toTable())
+  const ezGraph = (() => {
+    const graph = new MissionGraph();
+    const [start, value1, value2, exit] = graph.addNodes('<', '$', '$', '>');
+    const [s, m, e] = graph.addTriple('');
+    
+    graph.addLink(start, s)
+    graph.addLink(exit, e)
+    
+    graph.addLink(e, value1, LinkType.PATH, false)
+    graph.addLink(value1, s, LinkType.PATH, false)
+    
+    graph.addLink(value2, m)
+    
+    return graph;
+  })()
+  
+  const analyse = (graph) => {
+    return Object.values(graph.nodes).filter(node => node.value === '|');
+  }
+  
+  const graph = ezGraph
+  
+  console.log(graph.toTable())
+  
+  const m = randomArray(analyse(graph))
+  const s = graph.nodes[graph.getLinksOf(m).find(([nodeId, type]) => type === LinkType.START)[0]]
+  const e = graph.nodes[graph.getLinksOf(m).find(([nodeId, type]) => type === LinkType.END)[0]]
+  
+  const replaceGraph = randomArray(Grammar.nds)()
+  console.log(replaceGraph.toTable())
+  
+  const filterTypes = ([nodeId, type]) => type !== LinkType.START && type !== LinkType.MIDDLE && type !== LinkType.END;
+  
+  const sOut = graph.getLinksOf(s).filter(filterTypes);
+  const sIn = graph.getLinksTo(s).filter(filterTypes);
+  
+  const eOut = graph.getLinksOf(e).filter(filterTypes);
+  const eIn = graph.getLinksTo(e).filter(filterTypes);
+  
+  const mOut = graph.getLinksOf(m).filter(filterTypes);
+  const mIn = graph.getLinksTo(m).filter(filterTypes);
+  
+  while (mOut.length > 0) randomArray([sOut, eOut]).push(mOut.shift())
+  while (mIn.length > 0) randomArray([sIn, eIn]).push(mIn.shift())
+  
+  const replaceStart = Object.values(replaceGraph.nodes).find(node => node.value === '<')
+  replaceStart.value = 's';
+  const replaceExit = Object.values(replaceGraph.nodes).find(node => node.value === '>')
+  replaceExit.value = 's';
+  
+  sOut.map(([nodeId, type]) => replaceGraph
+    .addLink(replaceStart, graph.nodes[nodeId], type, false))
+  sIn.map(([nodeId, type]) => replaceGraph
+    .addLink(graph.nodes[nodeId], replaceStart, type, false))
+  eOut.map(([nodeId, type]) => replaceGraph
+    .addLink(replaceExit, graph.nodes[nodeId], type, false))
+  eIn.map(([nodeId, type]) => replaceGraph
+    .addLink(graph.nodes[nodeId], replaceExit, type, false))
+    
+  Object.values(replaceGraph.nodes).forEach(node => graph.addNode(node))
+  
+  graph.delNode(s);
+  graph.delNode(e);
+  graph.delNode(m);
+  
+  console.log(graph.toTable())
+  
       
 //   const St = graph.addNode(new MissionGraph.Node('St'))
 //   const Ex = graph.addNode(new MissionGraph.Node('Ex'))
