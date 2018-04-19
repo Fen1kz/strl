@@ -1,4 +1,4 @@
-const {MissionGraph} = require('./MissionGraph');
+const {MissionGraph, LinkType} = require('./graph/MissionGraph');
 
 // Start: 'St'
 // Exit: 'Ex'
@@ -19,62 +19,107 @@ const {MissionGraph} = require('./MissionGraph');
 
 
 module.exports = {
-  'nds': [
-    // (() => {
-    //   const graph = new MissionGraph();
-    //   const [start, exit, monster, value] = graph.addNodes('<', '>', 'M', '$');
-    //   const [s,m,e] = graph.addTriple();
-    //   graph.addLink(start, s);
-    //   graph.addLink(monster, m);
-    //   graph.addLink(monster, value);
-    //   graph.addLink(exit, e);
-    //   return graph;
-    // })
+  L0: [
     (() => {
       const graph = new MissionGraph();
-      const [start, monster, exit] = graph.addNodes('<', 'M', '>');
-      graph.addLink(start, monster);
-      graph.addLink(exit, monster);
+      const [start, value, exit] = graph.addNodes('<', '$', '>').map(n => n.id);
+      const [s, m, e] = graph.addTriple('').map(n => n.id);
+      
+      graph.addLink(start, s)
+      graph.addLink(exit, e)
+      
+      graph.addLink(e, value, LinkType.PATH, false)
+      graph.addLink(value, s, LinkType.PATH, false)
+      
       return graph;
     })
   ]
-  , '> <': [MissionGraph.fromTable(`
-  < K K s s L L $ > X
-< - 0 0 1 0 0 0 0 0 0
-K 0 - 0 1 0 2 0 0 0 1
-K 0 0 - 0 0 0 2 0 1 1
-s 1 1 0 - 1 1 0 0 0 0 
-s 0 0 0 1 - 0 1 0 0 0
-L 0 2 0 1 0 - 0 0 1 0
-L 0 0 2 0 1 0 - 1 0 0
-$ 0 0 0 0 0 0 1 - 1 0
-> 0 0 1 0 0 1 0 1 - 0
-X 0 1 1 0 0 0 0 0 0 -
-`), MissionGraph.fromTable(`
-  < s M $ >
-< - 1 0 0 0
-s 1 - 1 0 1
-M 0 1 - 1 0
-$ 0 0 1 - 0
-> 0 1 0 0 -
-`), MissionGraph.fromTable(`
-  < s M K L $ >
-< - 1 0 0 0 0 0
-s 1 - 1 0 1 0 1
-M 0 1 - 1 0 0 0
-K 0 0 1 - 2 0 0
-L 0 1 0 2 - 1 0
-$ 0 0 0 0 1 - 0
-> 0 1 0 0 0 0 -
-`)]
-//       , input: [0]
-//       , output: [2]
-//     }
-//     , {
-//       nodes: 'Un Lo'
-//       , links: `0 1\n0 1`
-//       , input: [0]
-//       , output: [1]
-//     }
-//   ]
+  , L1: [
+    (() => {
+      /*
+* < - x - >
+       */ 
+      const graph = new MissionGraph();
+      const [start, center, exit] = graph.addNodes(
+        '<', 'L3', '>'
+      ).map(n => n.id);
+      graph.addLink(start, center);
+      graph.addLink(exit, center);
+      return graph;
+    })
+  ]
+  , 'L2': [
+    (() => {
+      /*
+*     M - $
+*     |
+* < -(|)- >
+       */ 
+      const graph = new MissionGraph();
+      const [start, exit, monster, value] = graph.addNodes('<', '>', 'M', '$').map(n => n.id);
+      const [s,m,e] = graph.addTriple().map(n => n.id);
+      graph.addLink(start, s);
+      graph.addLink(monster, m);
+      graph.addLink(monster, value);
+      graph.addLink(exit, e);
+      return graph;
+    })
+    , (() => {
+      /*
+*     L - $
+*     |
+* < -(|)- >
+*     |
+*     M - K
+       */ 
+      const graph = new MissionGraph();
+      const [start, exit] = graph.addNodes('<', '>').map(n => n.id);
+      const [lock, value, monster, key] = graph.addNodes('L', '$', 'M', 'K').map(n => n.id);
+      const [s,m,e] = graph.addTriple().map(n => n.id);
+      graph.addLink(start, s);
+      graph.addLink(exit, e);
+      
+      graph.addLink(m, monster);
+      graph.addLink(monster, key);
+      graph.addLink(key, lock, LinkType.LOGIC);      
+      graph.addLink(m, lock);
+      graph.addLink(lock, value);
+      
+      return graph;
+    })
+  ]
+  , 'L3': [
+    (() => {
+      const graph = new MissionGraph();
+      const [start, secret, value, exit] = graph.addNodes('<', '%', '$', '>').map(n => n.id);
+      const [key1, key2, lock1, lock2] = graph.addNodes('K', 'K', 'L', 'L').map(n => n.id);
+      const [s0, m0, e0] = graph.addTriple().map(n => n.id);
+      const [s1, m1, e1] = graph.addTriple().map(n => n.id);
+      const [s2, m2, e2] = graph.addTriple().map(n => n.id);
+      
+      graph.addLink(start, s1)
+      
+      graph.addLink(secret, e0, LinkType.PATH, false)
+      graph.addLink(secret, key2)
+      
+      graph.addLink(value, exit)
+      graph.addLink(value, lock2)
+         
+      graph.addLink(exit, key2)
+      graph.addLink(exit, lock1)
+      
+      graph.addLink(key1, s0)
+      graph.addLink(key1, e1)
+      graph.addLink(key1, lock1, LinkType.LOGIC)
+        
+      graph.addLink(key2, lock2, LinkType.LOGIC)
+      
+      graph.addLink(lock1, m1)
+      graph.addLink(lock2, m2)
+      
+      graph.addLink(m1, s2)
+
+      return graph;
+    })
+  ]
 }
