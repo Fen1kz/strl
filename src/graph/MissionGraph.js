@@ -40,10 +40,7 @@ class MissionGraph {
   
   delNodes(...nodeIds) {
     nodeIds.forEach(nodeId => {
-      this.linksTo(nodeId).forEach(({sourceId, targetId}) => {
-        this.delLink(sourceId, targetId);
-      });
-      this.linksOf(nodeId).forEach(({sourceId, targetId}) => {
+      _.clone(this.links(nodeId)).forEach(({sourceId, targetId}) => {
         this.delLink(sourceId, targetId);
       });
     });
@@ -54,80 +51,79 @@ class MissionGraph {
   }
   
   addLink(node1id, node2id, type = LinkType.PATH, twoWay = true) {
-    const link12 = new Link(node1id, node2id, type)
-    this.nodes[node1id].linksOf.push(link12)
-    this.nodes[node2id].linksTo.push(link12)
-    if (twoWay) {
-      const link21 = new Link(node2id, node1id, type, link12);
-      link12.sibling = link21;
-      this.nodes[node2id].linksOf.push(link21);
-      this.nodes[node1id].linksTo.push(link21);
-    }
+    const link = new Link(node1id, node2id, type, twoWay)
+    this.nodes[node1id].links.push(link);
+    this.nodes[node2id].links.push(link);
   }
   
   delLink(node1id, node2id) {
-    _.remove(this.nodes[node1id].linksOf, {targetId: node2id});
-    _.remove(this.nodes[node2id].linksTo, {sourceId: node1id});
-    
-    _.remove(this.nodes[node2id].linksOf, {targetId: node1id});
-    _.remove(this.nodes[node1id].linksTo, {sourceId: node2id});
+    _.remove(this.nodes[node1id].links, ({sourceId: sid, targetId: tid}) => 
+      (sid === node1id && tid === node2id) || (sid === node2id && tid === node1id));
+    _.remove(this.nodes[node2id].links, ({sourceId: sid, targetId: tid}) => 
+      (sid === node1id && tid === node2id) || (sid === node2id && tid === node1id));
   }
   
   getLink(node1id, node2id) {
-    return _.find(this.nodes[node1id].linksOf, {targetId: node2id});
+    return _.find(this.nodes[node1id].links, ({sourceId, targetId, twoWay}) =>
+      (sourceId === node1id && targetId === node2id) 
+      || (sourceId === node2id && targetId === node1id)
+    );
+  }
+  
+  links(nodeId) {
+    return this.nodes[nodeId].links;
   }
   
   linksOf(nodeId) {
-    return this.nodes[nodeId].linksOf;
+    return this.links(nodeId).filter(({sourceId, targetId, twoWay}) =>
+      (sourceId === nodeId) || (targetId === nodeId && twoWay)
+    );
   }
   
   linksTo(nodeId) {
-    return this.nodes[nodeId].linksTo;
+    return this.links(nodeId).filter(({sourceId, targetId, twoWay}) =>
+      (sourceId === nodeId && twoWay) || (targetId === nodeId)
+    );
   }
   
   merge(mergeGraph) {
     const midNode = randomArray(_.filter(this.nodes, {name: '|'}));
     if (!midNode) return false;
     const mId = midNode.id;
-    const sId = _.find(this.linksOf(mId), {type: LinkType.START}).targetId;
-    const eId = _.find(this.linksOf(mId), {type: LinkType.END}).targetId
+    const sId = _.find(this.links(mId), {type: LinkType.START}).targetId;
+    const eId = _.find(this.links(mId), {type: LinkType.END}).targetId
         
     const filterTypes = ({type}) => 
       type !== LinkType.START 
       && type !== LinkType.MIDDLE 
       && type !== LinkType.END;
     
-    const sOut = _.filter(this.linksOf(sId), filterTypes);
-    const sIn = _.filter(this.linksTo(sId), filterTypes);
+    const startLinks = _.filter(this.links(sId), filterTypes);
+    const endLinks = _.filter(this.links(eId), filterTypes);
+    const midLinks = _.filter(this.links(mId), filterTypes);
     
-    const eOut = _.filter(this.linksOf(eId), filterTypes);
-    const eIn = _.filter(this.linksTo(eId), filterTypes);
-    
-    const mOut = _.filter(this.linksOf(mId), filterTypes);
-    const mIn = _.filter(this.linksTo(mId), filterTypes);
-    
-    while (mOut.length > 0) randomArray([sOut, eOut]).push(mOut.shift())
-    while (mIn.length > 0) randomArray([sIn, eIn]).push(mIn.shift())
+    while (midLinks.length > 0) 
+      randomArray([startLinks, endLinks]).push(midLinks.shift())
     
     const replaceStart = _.find(mergeGraph.nodes, {name: '<'})
           replaceStart.name = 's';
-    const replaceExit = _.find(mergeGraph.nodes, {name: '>'})
-          replaceExit.name = 's';
+    const replaceEnd = _.find(mergeGraph.nodes, {name: '>'})
+          replaceEnd.name = 's';
     
     _.forEach(mergeGraph.nodes, node => this.addNode(node))
     
-    sOut.map(({sourceId, targetId, type}) => 
-      this.addLink(replaceStart.id, targetId, type, false)
+    startLinks.map(({sourceId, targetId, type, direction}) => 
+      sourceId === sId ? this.addLink(replaceStart.id, targetId, type, direction)
+      : targetId === sId ? this.addLink(sourceId, replaceStart.id, type, direction)
+      : null
     );
-    eOut.map(({sourceId, targetId, type}) => 
-      this.addLink(replaceExit.id, targetId, type, false)
-    );      
-    sIn.map(({sourceId, targetId, type}) => 
-      this.addLink(sourceId, replaceStart.id, type, false)
+    endLinks.map(({sourceId, targetId, type, direction}) => 
+      sourceId === sId ? this.addLink(replaceStart.id, targetId, type, direction)
+      : targetId === sId ? this.addLink(sourceId, replaceStart.id, type, direction)
+      : null
     );
-    eIn.map(({sourceId, targetId, type}) => 
-      this.addLink(sourceId, replaceExit.id, type, false)
-    );
+    if (startLinks.some(l => l === null)) throw new Error(null)
+    if (endLinks.some(l => l === null)) throw new Error(null)
       
     this.delNodes(sId, mId, eId);
       
@@ -166,7 +162,7 @@ class MissionGraph {
       _.map(this.nodes, node => {
         return `${node}${' '.repeat(prefix.length - node.name.length)}${
           _.map(this.nodes, node2 => {
-            const link = _.find(node.linksOf, {targetId: node2.id})
+            const link = this.getLink(node.id, node2.id);
             return ' ' 
               + (node.id == node2.id ? '-' 
                 : link ? link.type 
@@ -183,15 +179,17 @@ class MissionGraph {
 }
 
 class Link {
-  constructor(sourceId, targetId, type, sibling) {
+  constructor(sourceId, targetId, type, twoWay) {
     this.sourceId = sourceId;
     this.targetId = targetId;
     this.type = type;
-    this.sibling = sibling;
+    this.both = twoWay;
   }
   
   toString() {
-    return `${this.sourceId} ${this.type}> ${this.targetId}`;
+    return `${this.sourceId} ${
+      this.twoWay ? '<' : ''
+    }${this.type}> ${this.targetId}`;
   }
 }
 
@@ -200,8 +198,7 @@ class Node {
     this.id = Node.NODE_ID++;
     this.name = name;
     this.data = {};
-    this.linksOf = [];
-    this.linksTo = [];
+    this.links = [];
   }
   
   toString() {

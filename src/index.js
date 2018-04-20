@@ -23,7 +23,8 @@ const generateMission = (missionString, complexity = 3) => {
     result = replace(initialGraph, 'L1')
   }
   
-  // console.log(initialGraph.toTable())
+  console.log(initialGraph.toTable())
+  console.log(_.filter(initialGraph.nodes, (node) => node.name === 's')[4])
   const lvlg = (() => {
     const graph = new MissionGraph();
     const [start, space, monster, exit] = graph.addNodes(
@@ -36,7 +37,7 @@ const generateMission = (missionString, complexity = 3) => {
     return graph;
   })()
   
-  const levelGraph = new LevelGraph(lvlg);
+  // const levelGraph = new LevelGraph(lvlg);
   
 }
 

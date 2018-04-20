@@ -35,8 +35,10 @@ class LevelGraph {
     
     console.log(start.id, links.map(_.toString))
     
-    start.data.x = 0;
-    start.data.y = 0;
+    const queue = [start]
+    
+    // node.link
+    // wh_.length
         
     let linkCounter = makeLevelLinkCounter();
     links.forEach(link => {
