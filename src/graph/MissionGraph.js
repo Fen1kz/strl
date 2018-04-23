@@ -186,6 +186,15 @@ class Link {
     this.both = twoWay;
   }
   
+  hasId(id) {
+    return this.sourceId === id || this.targetId === id;
+  }
+  
+  hasIds(id1, id2) {
+    return (this.sourceId === id1 && this.targetId === id2)
+      || (this.sourceId === id2 && this.targetId === id1);
+  }
+  
   toString() {
     return `${this.sourceId} ${
       this.twoWay ? '<' : ''

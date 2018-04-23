@@ -6,8 +6,6 @@ const _ = require('lodash');
 
 const generateMission = (missionString, complexity = 3) => {
   const grammarKeys = Object.keys(Grammar)
-  
-  const initialGraph = randomArray(Grammar.L0)();
 
   
   const replace = (graph, replaceKey) => {    
@@ -16,28 +14,32 @@ const generateMission = (missionString, complexity = 3) => {
     return graph.merge(replaceGraph);
   }
   
-  replace(initialGraph, 'L3')
-  replace(initialGraph, 'L2')
-  let result = true;
-  while (result) {
-    result = replace(initialGraph, 'L1')
-  }
+  // const initialGraph = randomArray(Grammar.L0)();
+  // 
+  // replace(initialGraph, 'L3')
+  // replace(initialGraph, 'L2')
+  // let result = true;
+  // while (result) {
+  //   result = replace(initialGraph, 'L1')
+  // }
   
-  console.log(initialGraph.toTable())
-  console.log(_.filter(initialGraph.nodes, (node) => node.name === 's')[4])
+  // console.log(initialGraph.toTable())
+  // console.log(_.filter(initialGraph.nodes, (node) => node.name === 's')[4])
   const lvlg = (() => {
     const graph = new MissionGraph();
-    const [start, space, monster, exit] = graph.addNodes(
-      '<', 's', 'M', '>'
+    const [start, space, monster, treasure, exit] = graph.addNodes(
+      '<', 's', 'M', '$', '>'
     ).map(n => n.id);
     graph.addLink(start, space);
-    graph.addLink(space, exit);
-    graph.addLink(start, monster, LinkType.PATH, false);
-    graph.addLink(monster, exit, LinkType.PATH, false);
+    graph.addLink(space, monster);
+    graph.addLink(monster, exit);
+    graph.addLink(exit, treasure, LinkType.PATH, false);
+    graph.addLink(treasure, start, LinkType.PATH, false);
+    
     return graph;
   })()
   
-  // const levelGraph = new LevelGraph(lvlg);
+  const levelGraph = new LevelGraph(lvlg);
   
 }
 

@@ -2,6 +2,8 @@ const {LinkType} = require('./MissionGraph');
 const {randomArray} = require('../Random');
 const _ = require('lodash');
 
+const {JSDOM} = require('jsdom');
+
 const LevelLink = {
   N: 1
   , E: 2
@@ -23,29 +25,78 @@ class LevelGraph {
     
     const start = Object.values(graph.nodes).find(node => node.name === '<')
     
-    const a = start.linksOf
-    const b = _.filter(start.linksTo, link2 =>
-      _.some(start.linksOf, link1 => 
-        link1.sourceId === link2.sourceId && link2.sourceId === link1.sourceId
-      ));
-      
-    const links = _().concat(a, b).filter({type: LinkType.PATH}).value();
+    const queue = [start];
+    for (let i = 0; i < queue.length; ++i) {
+      const node = queue[i];
+      _.forEach(node.links, (link) => {
+        const node1 = graph.nodes[link.sourceId];
+        if (!_.some(queue, {id: node1.id})) {
+          queue.push(node1);
+        }
+        const node2 = graph.nodes[link.targetId];
+        if (!_.some(queue, {id: node2.id})) {
+          queue.push(node2);
+        }
+      })
+    }
     
-    if (links.length > 4) console.warn('links more than 4');
     
-    console.log(start.id, links.map(_.toString))
+    const CENTER = 100;
+    const RADIUS = 10;
+    const LENGTH = 50;
     
-    const queue = [start]
-    
-    // node.link
-    // wh_.length
-        
-    let linkCounter = makeLevelLinkCounter();
-    links.forEach(link => {
-      
+    queue.forEach((node, i) => {
+      const angle = (i * 2 * Math.PI / queue.length);
+      node.data.x = LENGTH * Math.cos(angle);
+      node.data.y = LENGTH * Math.sin(angle);
     })
     
-    // graph.linksOf(start)
+    console.log(queue.map(n => `${n.id}${n.name}:[${n.links.join(';')}]`));
+    
+    const D3Node = require('d3-node');
+    const d3n = new D3Node();
+    const container = d3n.createSVG(200,200)
+      .append('g')
+    
+    const nodeEnter = container.selectAll("g")
+      .data(queue)
+      .enter();
+    
+    const l2g = (xy) => CENTER + xy;
+    const l2gX = (node) => l2g(node.data.x);
+    const l2gY = (node) => l2g(node.data.y);
+    
+    nodeEnter.append('circle')
+        .attr('r', 10)
+        .attr('cx', l2gX)
+        .attr('cy', l2gY)
+        
+    nodeEnter.append('text')
+      .text(node => node.id + node.name)
+      .style('fill', 'red')
+      .attr('x', l2gX)
+      .attr('y', l2gY)
+      
+    const linkEnter = nodeEnter
+      .selectAll('line')
+      .data(node => node.links)
+      .enter();
+      
+    linkEnter
+        .append('line')
+        .attr('x1', link => l2gX(graph.nodes[link.sourceId]))
+        .attr('y1', link => l2gY(graph.nodes[link.sourceId]))
+        .attr('x2', link => l2gX(graph.nodes[link.targetId]))
+        .attr('y2', link => l2gY(graph.nodes[link.targetId]))
+        .style('stroke', 'black')
+        .style('stroke-width', 2)
+    
+    
+    require('fs').writeFileSync('test.svg', d3n.svgString()) 
+    // const window = new JSDOM('<div id="drawing"></div>');
+    // const SVG = require('svg.js')(window);
+    // 
+    // SVG(window.document);
   }
   // 
   // addNode(node) {
