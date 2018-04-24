@@ -40,22 +40,124 @@ class LevelGraph {
       })
     }
     
-    
-    const CENTER = 100;
-    const RADIUS = 10;
-    const LENGTH = 50;
+    const CENTER = 400;
+    const LENGTH = 40;
+    const RADIUS = LENGTH / 2;
+    const GRID = LENGTH * 2;
     
     queue.forEach((node, i) => {
       const angle = (i * 2 * Math.PI / queue.length);
-      node.data.x = LENGTH * Math.cos(angle);
-      node.data.y = LENGTH * Math.sin(angle);
+      node.data.x = 4 * LENGTH * Math.cos(angle);
+      node.data.y = 4 * LENGTH * Math.sin(angle);
     })
+    // queue.unshift()
+    
+    const adjust = () => {
+      queue.forEach((node, i) => {
+        const {x, y} = node.data;
+        let forcex = 0;
+        let forcey = 0;
+        let forcec = 0;
+        
+        _.forEach(graph.linkedNodes(node.id), node => {
+          const {x: nx, y: ny} = node.data;
+          const dx = x - nx;
+          const dy = y - ny;
+          if ((dx*dx + dy*dy) > GRID * GRID) {
+            forcex -= dx;
+            forcey -= dy;
+            forcec++;
+          }
+        });
+        
+        if (forcec > 0) {
+          node.data.speedx = forcex / forcec / 5;
+          node.data.speedy = forcey / forcec / 5;
+        } else {
+          node.data.speedx = 0;
+          node.data.speedy = 0;
+        }
+        // console.log(node.data.speedx)
+      });
+      queue.forEach((node, i) => {
+        const {x, y} = node.data;
+        let forcex = 0;
+        let forcey = 0;
+        let forcec = 0;
+        
+        _.forEach(graph.nodes, (node) => {
+          const {x: nx, y: ny} = node.data;
+          const dx = x - nx;
+          const dy = y - ny;
+          if ((dx*dx + dy*dy) < GRID * GRID) {
+            forcex += dx;
+            forcey += dy;
+            forcec++;
+          }
+        });
+        if (forcec > 0) {
+          node.data.speedNodex = -Math.sign(forcex) * (LENGTH - Math.abs(forcex));
+          node.data.speedNodey = -Math.sign(forcey) * (LENGTH - Math.abs(forcey));
+        } else {
+          node.data.speedNodex = 0;
+          node.data.speedNodey = 0;
+        }
+      });
+      queue.forEach((node, i) => {
+        const {x, y} = node.data;
+        let tempx = x % GRID;
+        if (Math.abs(tempx) > (GRID / 2)) {
+          tempx = - Math.sign(tempx) * (GRID - Math.abs(tempx))
+        }
+        let tempy = y % GRID;
+        if (Math.abs(tempy) > (GRID / 2)) {
+          tempy = - Math.sign(tempy) * (GRID - Math.abs(tempy))
+        }
+        let forcex = -tempx;
+        let forcey = -tempy;
+        node.data.speedORTx = forcex
+        node.data.speedORTy = forcey
+        // console.log(x, x % LENGTH, forcex, node.data.speedORTx)
+      });
+      const speedl = (node, prop) => (
+        node.data[prop + 'x'] * node.data[prop + 'x']
+        + node.data[prop + 'y'] * node.data[prop + 'y']
+      );
+      let stable = true;
+      queue.forEach((node, i) => {
+        if (speedl(node, 'speed') > Math.pow(LENGTH / 2, 2)) {
+          node.data.x += node.data.speedx
+          node.data.y += node.data.speedy
+          stable = false;
+        }
+      })
+      queue.forEach((node, i) => {
+        if (speedl(node, 'speedNode') > Math.pow(LENGTH / 2, 2)) {
+          node.data.x += node.data.speedNodex
+          node.data.y += node.data.speedNodey
+          stable = false;
+        }
+      })
+      console.log(stable);
+      if (stable) {
+        queue.forEach((node, i) => {
+          node.data.x += node.data.speedORTx
+          node.data.y += node.data.speedORTy
+        })
+      }
+    }
+    for (let i = 0; i < 440; ++i)
+    adjust()
+    // adjust()
+    // adjust()
+    // adjust()
+    
     
     console.log(queue.map(n => `${n.id}${n.name}:[${n.links.join(';')}]`));
     
     const D3Node = require('d3-node');
     const d3n = new D3Node();
-    const container = d3n.createSVG(200,200)
+    const container = d3n.createSVG(CENTER*2,CENTER*2)
       .append('g')
     
     const nodeEnter = container.selectAll("g")
@@ -66,24 +168,64 @@ class LevelGraph {
     const l2gX = (node) => l2g(node.data.x);
     const l2gY = (node) => l2g(node.data.y);
     
-    nodeEnter.append('circle')
-        .attr('r', 10)
+    const nodeGroup = nodeEnter
+      .append('g')
+    
+    nodeGroup.append('circle')
+        .attr('r', RADIUS)
         .attr('cx', l2gX)
         .attr('cy', l2gY)
         
-    nodeEnter.append('text')
+    nodeGroup.append('line')
+      .classed('speed', true)
+      .attr('x1', l2gX)
+      .attr('y1', l2gY)
+      .attr('x2', node => l2gX(node) + node.data.speedx)
+      .attr('y2', node => l2gY(node) + node.data.speedy)
+      .style('stroke', 'green')
+      .style('stroke-width', 2)
+      
+    nodeGroup.append('line')
+      .classed('speedNode', true)
+      .attr('x1', l2gX)
+      .attr('y1', l2gY)
+      .attr('x2', node => l2gX(node) + node.data.speedNodex)
+      .attr('y2', node => l2gY(node) + node.data.speedNodey)
+      .style('stroke', 'red')
+      .style('stroke-width', 2)
+      
+    nodeGroup.append('line')
+      .classed('length', true)
+      .attr('x1', l2gX)
+      .attr('y1', l2gY)
+      .attr('x2', node => l2gX(node) + LENGTH * 2)
+      .attr('y2', l2gY)
+      .style('stroke', 'blue')
+      .style('stroke-width', 2)
+      
+    nodeGroup.append('line')
+      .classed('speedORT', true)
+      .attr('x1', l2gX)
+      .attr('y1', l2gY)
+      .attr('x2', node => l2gX(node) + node.data.speedORTx)
+      .attr('y2', node => l2gY(node) + node.data.speedORTy)
+      .style('stroke', 'orange')
+      .style('stroke-width', 2)
+        
+    nodeGroup.append('text')
       .text(node => node.id + node.name)
       .style('fill', 'red')
       .attr('x', l2gX)
       .attr('y', l2gY)
       
     const linkEnter = nodeEnter
-      .selectAll('line')
+      .selectAll('line.link')
       .data(node => node.links)
       .enter();
       
     linkEnter
         .append('line')
+        .classed('link', true)
         .attr('x1', link => l2gX(graph.nodes[link.sourceId]))
         .attr('y1', link => l2gY(graph.nodes[link.sourceId]))
         .attr('x2', link => l2gX(graph.nodes[link.targetId]))

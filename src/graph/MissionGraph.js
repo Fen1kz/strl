@@ -74,6 +74,12 @@ class MissionGraph {
     return this.nodes[nodeId].links;
   }
   
+  linkedNodes(nodeId) {
+    return this.nodes[nodeId].links
+      .map(link => link.sourceId === nodeId ? link.targetId : link.sourceId)
+      .map(id => this.nodes[id]);
+  }
+  
   linksOf(nodeId) {
     return this.links(nodeId).filter(({sourceId, targetId, twoWay}) =>
       (sourceId === nodeId) || (targetId === nodeId && twoWay)
