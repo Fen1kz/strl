@@ -16,8 +16,8 @@ const generateMission = (missionString, complexity = 3) => {
   
   const initialGraph = randomArray(Grammar.L0)();
   
-  replace(initialGraph, 'L3')
   replace(initialGraph, 'L2')
+  replace(initialGraph, 'L3')
   // let result = true;
   // while (result) {
   //   result = replace(initialGraph, 'L1')
@@ -39,8 +39,8 @@ const generateMission = (missionString, complexity = 3) => {
     return graph;
   })()
   
-  const levelGraph = new LevelGraph(lvlg);
-  // const levelGraph = new LevelGraph(initialGraph);
+  // const levelGraph = new LevelGraph(lvlg);
+  const levelGraph = new LevelGraph(initialGraph);
   
 }
 

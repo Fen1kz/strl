@@ -4,9 +4,6 @@ const {randomInt, randomArray} = require('../Random');
 const {LinkType} = require('./MissionGraph');
 const {LevelRenderer} = require('./LevelRenderer');
 
-const Geom = require('../Geom');
-
-class Point{ constructor(x = 0, y = 0) {this.x = x; this.y = y;}}
 class LevelGraph {
   constructor(graph) {
     this.nodes = {};
@@ -32,24 +29,22 @@ class LevelGraph {
   ]
     
     const pairChecks = [(n00, n01, n10, n11) => {
-      const isect = Geom.isectSegments(n00.x, n00.y, n01.x, n01.y
+      const isect =  n00.id !== n10.id && n00.id !== n11.id
+        && n01.id !== n10.id && n01.id !== n11.id
+        && this.checkIntersection(n00.x, n00.y, n01.x, n01.y
         , n10.x, n10.y, n11.x, n11.y)
-      return isect;
+        // if (isect) console.log(n00, n01, n10, n11)
+        return isect;
     }]
     
     const constraints = [(state) => {
-      for (let p0 = 0; p0 < pairs.length; ++p0) {
-        const node00 = state.nodes[pairs[p0].sourceId];
-        const node01 = state.nodes[pairs[p0].targetId];
-        if (!node00 || !node01) continue;
-        if (_.some(edgeChecks, (check) => check(node00, node01))) return false;
-      }
       for (let p0 = 0; p0 < pairs.length; ++p0) {
         const pair0 = pairs[p0];
         const node00 = state.nodes[pair0.sourceId];
         const node01 = state.nodes[pair0.targetId];
         if (!node00 || !node01) continue;
-        for (let p1 = p0 + 1; p1 < pairs.length; ++p1) {
+        if (_.some(edgeChecks, (check) => check(node00, node01))) return false;
+        for (let p1 = 0; p1 < pairs.length; ++p1) {
           const pair1 = pairs[p1];
           const node10 = state.nodes[pair1.sourceId];
           const node11 = state.nodes[pair1.targetId];
@@ -95,56 +90,39 @@ class LevelGraph {
           positions.push(state.map[key])
       }
       return positions;
-    }
-    const placeNode = (state, nodeId, pos) => {
+    } 
+    const placeNode = (state, nodeId, position) => {
       // console.profile("placeNode");
+      const {x: px, y: py} = position;
       const nextState = {
-        nodes: _.assign({}, state.nodes)
+        nodes: {}
       };
-      nextState.nodes[nodeId] = {x: pos.x, y: pos.y, id: nodeId};
-      
-      return nextState;      
-    };
-    const placePositions = (nextState, state, pos) => {
-      nextState.map = copyMap(state.map)
-      nextState.map[makeKey(pos.x, pos.y)] = true;
-      
-      nextState.positions = state.positions.filter(
-        (p) => pos.x !== p.x && pos.y !== p.y);
-        
-      nextState.positions = nextState.positions.concat(
-        addArray
-          .filter(([addx, addy]) => {
-            const key = makeKey(pos.x + addx, pos.y + addy);
-            return !nextState.map[key]
-          })
-          .map(([addx, addy]) => new Point(pos.x+addx, pos.y+addy))
-      );
-      
-      return nextState;      
-    };
-    const placeNodeFull = (state, nodeId, pos) => {
-      // console.profile("placeNode");
-      const nextState = {
-        nodes: _.assign({}, state.nodes)
-      };
-      nextState.nodes[nodeId] = {x: pos.x, y: pos.y, id: nodeId};
+      for (let nid in state.nodes) {
+        nextState.nodes[nid] = state.nodes[nid]
+      }
+      nextState.nodes[nodeId] = {x: px, y: py, id: nodeId};
       
       nextState.map = copyMap(state.map)
-      nextState.map[makeKey(pos.x, pos.y)] = true;
+      nextState.map[makeKey(px, py)] = true;
       
-      nextState.positions = state.positions.filter(
-        (p) => pos.x !== p.x && pos.y !== p.y);
+      
+      nextState.positions = _.filter(state.positions
+        , ({x, y}) => x !== px && y !== py);
         
       nextState.positions = nextState.positions.concat(
-        addArray
-          .filter(([addx, addy]) => {
-            const key = makeKey(pos.x + addx, pos.y + addy);
-            return !nextState.map[key]
-          })
-          .map(([addx, addy]) => new Point(pos.x+addx, pos.y+addy))
-      );
+        addArray.filter(([addx, addy]) => {
+          const key = makeKey(px + addx, py + addy);
+          return !nextState.map[key]
+        })
+        .map(([addx, addy]) => ({x: px+addx,y : py+addy}))
+      )
       
+      // addArray.forEach(([addx, addy]) => {
+      //   if (!_.some(nextState.nodes, ({x, y}) => px + addx === x && py === y + addy)) 
+      //     nextState.positions.push({x: px + addx, y: py + addy})
+      // })
+            
+      // console.profileEnd("placeNode");
       return nextState;      
     };
     
@@ -158,10 +136,8 @@ class LevelGraph {
         if (!state.nodes[node.id]) {
           state.positions.forEach(position => {
             const nextState = placeNode(state, node.id, position);
-            // const nextState = placeNodeFull(state, node.id, position);
             if (isValid(nextState, constraints)) {
-              states.push(placePositions(nextState, state, position));
-              // states.push(nextState);
+              states.push(nextState);
             }
           })
         }
@@ -170,21 +146,12 @@ class LevelGraph {
     }
     
     let stateStack = [
-      placePositions(placeNode(
-        state
-        , _.chain(graph.nodes)
-          .keys()
-          .first()
-          .value()
-        , new Point()
-      )
-      , state
-      , new Point())
+      placeNode(state, _.first(graph.nodes), {x: 0, y: 0})
     ];
     
     let i = 0, exitState, testState;
-    // console.time('10000')
-    while (stateStack.length !== 0 && ++i <= 10000000) {
+    console.time('10000')
+    while (stateStack.length !== 0 && ++i <= 10000) {
     // setInterval(() => {
       const state = stateStack.pop();
       if (_.every(graph.nodes, node => state.nodes[node.id])) {
@@ -194,15 +161,14 @@ class LevelGraph {
       stateStack = stateStack.concat(getStates(state, constraints))
       testState = state;
       if (i % 10000 === 0) {
-        (new LevelRenderer()).render(graph, exitState || testState)
-        console.log(stateStack.length, i)
+        // (new LevelRenderer()).render(graph, state)
+        // console.log(stateStack.length, i)
       }
     // }, 100)
     }
-    (new LevelRenderer()).render(graph, exitState || testState)
-    // console.timeEnd('10000')
+    console.timeEnd('10000')
     
-    console.log(i, !!exitState)
+    console.log(i)
   }
   
   queue() {
@@ -229,6 +195,22 @@ class LevelGraph {
     //   // node.data.x = i;
     //   // node.data.y = i;
     // });
+  }
+  
+  checkIntersection(x1, y1, x2, y2, x3, y3, x4, y4) {
+    const denominator=(y4-y3)*(x1-x2)-(x4-x3)*(y1-y2);
+    if (denominator == 0) {
+      return ( 
+      (x1*y2-x2*y1)*(x4-x3) - (x3*y4-x4*y3)*(x2-x1) == 0
+      && (x1*y2-x2*y1)*(y4-y3) - (x3*y4-x4*y3)*(y2-y1) == 0
+      )
+    } else {
+      const numerator_a=(x4-x2)*(y4-y3)-(x4-x3)*(y4-y2);
+      const numerator_b=(x1-x2)*(y4-y2)-(x4-x2)*(y1-y2);
+      const Ua=numerator_a/denominator;
+      const Ub=numerator_b/denominator;
+      return (Ua >= 0 && Ua <= 1 && Ub >= 0 && Ub <= 1)
+    }
   }
 }
 
